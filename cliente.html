@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Acompanhamento da lista de presentes</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+  --bg:#ffffff;
+  --card:#fbfaf7;
+  --olive:#8b947f;
+  --olive-dark:#667057;
+  --olive-soft:#eef1e9;
+  --green:#7cc63d;
+  --gold:#d3bb6c;
+  --text:#62675d;
+  --muted:#8b9086;
+  --line:#e4e7de;
+  --shadow:0 14px 34px rgba(84,89,74,.12);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font-family:Georgia,"Times New Roman",serif}
+.wrap{
+  width:min(100%,900px);
+  margin:auto;
+  padding:34px 14px 54px;
+}
+.hero{
+  text-align:center;
+  margin-bottom:24px;
+}
+.hero .small{
+  font-family:Arial,sans-serif;
+  font-size:11px;
+  letter-spacing:3px;
+  color:var(--olive);
+  margin-bottom:8px;
+}
+.hero h1{
+  margin:0;
+  color:var(--olive-dark);
+  font-family:"Segoe Script","Brush Script MT",cursive;
+  font-size:clamp(36px,8vw,58px);
+  font-weight:400;
+  line-height:1.08;
+}
+.hero p{
+  margin:10px auto 0;
+  max-width:590px;
+  color:var(--muted);
+  font-style:italic;
+  line-height:1.55;
+}
+.stats{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin:0 0 22px;
+}
+.stat{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:15px 10px;
+  text-align:center;
+  box-shadow:0 8px 22px rgba(84,89,74,.07);
+}
+.stat strong{
+  display:block;
+  color:var(--olive-dark);
+  font-size:26px;
+  font-weight:400;
+}
+.stat span{
+  display:block;
+  margin-top:3px;
+  font:10px Arial,sans-serif;
+  letter-spacing:1.5px;
+  color:var(--muted);
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:20px;
+  align-items:start;
+}
+.room-card{
+  background:linear-gradient(180deg,#fbfaf7 0%,#f7f6f2 100%);
+  border:1px solid #ecebe5;
+  border-radius:26px;
+  padding:15px 13px 13px;
+  box-shadow:var(--shadow);
+}
+.room-card h2{
+  margin:0 0 11px;
+  text-align:center;
+  color:var(--gold);
+  font-family:"Segoe Script","Brush Script MT",cursive;
+  font-size:32px;
+  font-weight:400;
+}
+.items-shell{
+  background:#fff;
+  border:1px solid #dfe2d8;
+  border-radius:20px;
+  overflow:hidden;
+}
+.item{
+  display:grid;
+  grid-template-columns:30px 1fr auto;
+  gap:12px;
+  align-items:center;
+  padding:15px 13px;
+  border-bottom:1px solid var(--line);
+}
+.item:last-child{border-bottom:0}
+.check{
+  width:25px;
+  height:25px;
+  border:2px solid var(--olive);
+  border-radius:6px;
+  display:grid;
+  place-items:center;
+  color:#fff;
+  background:#fff;
+  font-size:15px;
+}
+.item.reserved .check{
+  background:var(--olive);
+}
+.item-name{
+  font-size:16px;
+  line-height:1.3;
+}
+.item.reserved .item-name{
+  text-decoration:line-through;
+  color:#9b9e97;
+}
+.status{
+  min-width:100px;
+  text-align:center;
+  border-radius:999px;
+  padding:8px 10px;
+  font:10px Arial,sans-serif;
+  letter-spacing:1.4px;
+  color:#fff;
+  background:var(--green);
+  white-space:nowrap;
+}
+.item.reserved .status{background:var(--olive)}
+.person{
+  grid-column:2 / 4;
+  margin-top:-4px;
+  font-size:13px;
+  color:var(--olive-dark);
+}
+.person strong{font-weight:400}
+.loading,.error{
+  text-align:center;
+  padding:45px 16px;
+  color:var(--muted);
+  font-style:italic;
+}
+.updated{
+  text-align:center;
+  color:#a0a39c;
+  font-size:11px;
+  margin-top:22px;
+}
+@media(max-width:720px){
+  .grid{grid-template-columns:1fr}
+  .stats{gap:7px}
+  .stat{padding:12px 5px}
+  .stat strong{font-size:22px}
+  .item{grid-template-columns:28px 1fr auto;gap:9px;padding:14px 11px}
+  .status{min-width:92px;font-size:9px;letter-spacing:1.1px}
+}
+</style>
+</head>
+<body>
+
+<main class="wrap">
+  <header class="hero">
+    <div class="small">ACOMPANHAMENTO DA LISTA</div>
+    <h1 id="eventName">Lista de presentes</h1>
+    <p>Acompanhe aqui, de forma automática, os presentes escolhidos pelos seus convidados.</p>
+  </header>
+
+  <section class="stats">
+    <div class="stat"><strong id="total">0</strong><span>TOTAL</span></div>
+    <div class="stat"><strong id="reserved">0</strong><span>RESERVADOS</span></div>
+    <div class="stat"><strong id="available">0</strong><span>DISPONÍVEIS</span></div>
+  </section>
+
+  <div id="content" class="loading">Carregando informações...</div>
+  <div id="updated" class="updated"></div>
+</main>
+
+<script>
+const SUPABASE_URL = 'https://puevsrsipzzvkapqicex.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_wu_JCjbkhrtquuNk7KkPfg_Z7ofeQJ_';
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const token = new URLSearchParams(location.search).get('chave');
+const content = document.getElementById('content');
+
+function escapeHtml(value){
+  return String(value ?? '')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
+}
+
+async function loadDashboard(){
+  if(!token){
+    content.className = 'error';
+    content.textContent = 'Link de acompanhamento inválido.';
+    return;
+  }
+
+  const { data, error } = await db.rpc('painel_cliente', {
+    p_token: token
+  });
+
+  if(error || !data || !data.length){
+    content.className = 'error';
+    content.textContent = 'Não foi possível acessar esta lista.';
+    return;
+  }
+
+  const first = data[0];
+
+  document.getElementById('eventName').textContent = first.evento_nome || 'Lista de presentes';
+  document.getElementById('total').textContent = first.total ?? 0;
+  document.getElementById('reserved').textContent = first.reservados ?? 0;
+  document.getElementById('available').textContent = first.disponiveis ?? 0;
+
+  const grouped = {};
+
+  data.forEach(row => {
+    if(!grouped[row.comodo]) grouped[row.comodo] = [];
+    grouped[row.comodo].push(row);
+  });
+
+  content.className = 'grid';
+  content.innerHTML = Object.entries(grouped).map(([room,items]) => `
+    <section class="room-card">
+      <h2>${escapeHtml(room)}</h2>
+      <div class="items-shell">
+        ${items.map(item => `
+          <div class="item ${item.reservado ? 'reserved' : ''}">
+            <span class="check">${item.reservado ? '♥' : ''}</span>
+            <span class="item-name">${escapeHtml(item.presente)}</span>
+            <span class="status">${item.reservado ? 'RESERVADO' : 'DISPONÍVEL'}</span>
+            ${item.reservado && item.reservado_por
+              ? `<div class="person">Reservado por: <strong>${escapeHtml(item.reservado_por)}</strong></div>`
+              : ''}
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `).join('');
+
+  document.getElementById('updated').textContent =
+    'Atualizado automaticamente às ' +
+    new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+db
+  .channel('painel-cliente-atualizacoes')
+  .on(
+    'postgres_changes',
+    { event:'UPDATE', schema:'public', table:'presentes' },
+    () => loadDashboard()
+  )
+  .subscribe();
+
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden) loadDashboard();
+});
+
+loadDashboard();
+</script>
+</body>
+</html>
