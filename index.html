@@ -49,10 +49,22 @@ const slug=new URLSearchParams(location.search).get('evento')||'cha-casa-nova-te
 let currentId=null; const content=document.getElementById('content'),modal=document.getElementById('modal'),toast=document.getElementById('toast');
 function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
 function showToast(m){toast.textContent=m;toast.classList.add('show');clearTimeout(window.t);window.t=setTimeout(()=>toast.classList.remove('show'),2200)}
+function shadeColor(hex,percent){
+  const n=parseInt(hex.replace('#',''),16);
+  const amt=Math.round(2.55*percent);
+  const r=Math.max(0,Math.min(255,(n>>16)+amt));
+  const g=Math.max(0,Math.min(255,((n>>8)&255)+amt));
+  const b=Math.max(0,Math.min(255,(n&255)+amt));
+  return '#'+(0x1000000+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
 async function load(){
  const {data,error}=await db.rpc('lista_publica',{p_slug:slug});
  if(error||!data?.length){content.className='error';content.textContent='Esta lista não foi encontrada.';return}
  document.getElementById('title').textContent=data[0].evento_nome||'Lista de presentes';
+ const color=data[0].cor_principal||'#8b947f';
+ document.documentElement.style.setProperty('--olive', color);
+ document.documentElement.style.setProperty('--olive-dark', shadeColor(color,-18));
+ document.documentElement.style.setProperty('--gold', color);
  const grouped={};data.forEach(x=>{if(!grouped[x.comodo])grouped[x.comodo]=[];grouped[x.comodo].push(x)});
  content.className='grid';content.innerHTML=Object.entries(grouped).map(([room,items])=>`<section class="room-card"><h2>${esc(room)}</h2><div class="items-shell">${items.map(g=>`<button class="gift-item ${g.reservado?'reserved':''}" data-id="${g.presente_id}" data-name="${esc(g.presente)}" ${g.reservado?'disabled':''}><span class="check"><span class="heart">♥</span></span><span class="gift-name">${esc(g.presente)}</span><span class="status">${g.reservado?'RESERVADO':'DISPONÍVEL'}</span></button>`).join('')}</div></section>`).join('');
  document.querySelectorAll('.gift-item:not(.reserved)').forEach(b=>b.addEventListener('click',()=>{currentId=Number(b.dataset.id);document.getElementById('selectedGift').textContent=b.dataset.name;document.getElementById('guestName').value='';modal.classList.add('open')}));

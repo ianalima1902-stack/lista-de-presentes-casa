@@ -43,7 +43,7 @@ input:focus{border-color:var(--olive);box-shadow:0 0 0 3px rgba(139,148,127,.12)
 .mini strong{display:block;color:var(--olive-dark);font-size:20px}
 .mini span{font:9px Arial,sans-serif;letter-spacing:1px;color:var(--muted)}
 .new-event{padding:18px;margin-bottom:18px}
-.form-grid{display:grid;grid-template-columns:1.3fr 1fr 1fr auto;gap:10px;align-items:end}
+.form-grid{display:grid;grid-template-columns:1.3fr 1fr 1fr .7fr auto;gap:10px;align-items:end}
 .manager-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
 .manager-title h2{margin:0;font-size:30px}
 .links-box{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 18px}
@@ -117,6 +117,10 @@ input:focus{border-color:var(--olive);box-shadow:0 0 0 3px rgba(139,148,127,.12)
         <label>LINK</label>
         <input id="eventSlug" placeholder="ana-e-jose">
       </div>
+      <div>
+        <label>COR PRINCIPAL</label>
+        <input id="eventColor" type="color" value="#8b947f" style="padding:6px;height:50px;">
+      </div>
       <button class="btn primary" id="createEventBtn">Criar lista</button>
     </div>
   </section>
@@ -130,6 +134,10 @@ input:focus{border-color:var(--olive);box-shadow:0 0 0 3px rgba(139,148,127,.12)
       <button class="btn ghost small" id="backBtn">← Minhas listas</button>
       <h2 id="managerEventName" style="margin-top:12px"></h2>
       <p id="managerClientName" class="sub"></p>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;color:var(--muted);font-size:13px;">
+        <span id="managerColorSwatch" style="width:18px;height:18px;border-radius:50%;border:1px solid rgba(0,0,0,.08);display:inline-block;"></span>
+        <span id="managerColorText"></span>
+      </div>
     </div>
     <div class="actions">
       <button class="btn ghost small" id="editEventBtn">Editar lista</button>
@@ -276,6 +284,10 @@ function renderEvents(){
     return `<article class="card event-card">
       <h3>${esc(ev.nome)}</h3>
       <div class="client">${esc(ev.cliente_nome||'Sem nome de cliente')}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--muted);font-size:13px;">
+        <span style="width:18px;height:18px;border-radius:50%;background:${esc(ev.cor_principal||'#8b947f')};border:1px solid rgba(0,0,0,.08);display:inline-block;"></span>
+        Cor principal
+      </div>
       <div class="mini-stats">
         <div class="mini"><strong>${gifts.length}</strong><span>TOTAL</span></div>
         <div class="mini"><strong>${reserved}</strong><span>RESERVADOS</span></div>
@@ -293,13 +305,15 @@ document.getElementById('createEventBtn').addEventListener('click',async()=>{
   const nome=document.getElementById('eventName').value.trim();
   const cliente_nome=document.getElementById('clientName').value.trim();
   const slug=slugify(document.getElementById('eventSlug').value.trim()||nome);
+  const cor_principal=document.getElementById('eventColor').value||'#8b947f';
   if(!nome||!slug) return showToast('Informe o nome do evento.');
-  const {data,error}=await db.from('eventos').insert({nome,cliente_nome,slug}).select().single();
+  const {data,error}=await db.from('eventos').insert({nome,cliente_nome,slug,cor_principal}).select().single();
   if(error) return showToast(error.code==='23505'?'Esse link já está em uso.':'Não foi possível criar a lista.');
   document.getElementById('eventName').value='';
   document.getElementById('clientName').value='';
   document.getElementById('eventSlug').value='';
   document.getElementById('eventSlug').dataset.manual='';
+  document.getElementById('eventColor').value='#8b947f';
   showToast('Nova lista criada.');
   await loadEverything();
   if(data) manageEvent(data.id);
@@ -319,6 +333,9 @@ function renderManager(){
   const ev=currentEvent;
   document.getElementById('managerEventName').textContent=ev.nome;
   document.getElementById('managerClientName').textContent=ev.cliente_nome||'';
+  const eventColor=ev.cor_principal||'#8b947f';
+  document.getElementById('managerColorSwatch').style.background=eventColor;
+  document.getElementById('managerColorText').textContent=eventColor;
   const publicUrl=`${BASE_URL}/?evento=${encodeURIComponent(ev.slug)}`;
   const clientUrl=`${BASE_URL}/cliente.html?chave=${ev.cliente_token}`;
   document.getElementById('publicLink').textContent=publicUrl;
@@ -398,9 +415,11 @@ document.getElementById('editEventBtn').addEventListener('click',async()=>{
   const nome=prompt('Nome do evento:',currentEvent.nome); if(nome===null)return;
   const cliente=prompt('Nome da cliente/casal:',currentEvent.cliente_nome||''); if(cliente===null)return;
   const slug=prompt('Link da lista:',currentEvent.slug); if(slug===null)return;
+  const cor=prompt('Cor principal em HEX:',currentEvent.cor_principal||'#8b947f'); if(cor===null)return;
   const newSlug=slugify(slug);
+  const newColor=/^#[0-9A-Fa-f]{6}$/.test(cor.trim()) ? cor.trim() : (currentEvent.cor_principal||'#8b947f');
   if(!nome.trim()||!newSlug)return showToast('Nome e link são obrigatórios.');
-  const {error}=await db.from('eventos').update({nome:nome.trim(),cliente_nome:cliente.trim(),slug:newSlug}).eq('id',currentEvent.id);
+  const {error}=await db.from('eventos').update({nome:nome.trim(),cliente_nome:cliente.trim(),slug:newSlug,cor_principal:newColor}).eq('id',currentEvent.id);
   if(error)return showToast(error.code==='23505'?'Esse link já está em uso.':'Não foi possível editar a lista.');
   showToast('Lista atualizada.'); await loadEverything();
 });
