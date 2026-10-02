@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Painel da lista de presentes</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#f7f8f4;
+  --card:#ffffff;
+  --olive:#8b947f;
+  --olive-dark:#667057;
+  --olive-soft:#eef1e9;
+  --text:#4f5349;
+  --muted:#8b8f86;
+  --line:#e2e5dc;
+  --danger:#a75f5f;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Georgia,"Times New Roman",serif;
+}
+.shell{
+  width:min(100%,980px);
+  margin:auto;
+  padding:24px 14px 48px;
+}
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:20px;
+}
+h1{
+  margin:0;
+  color:var(--olive-dark);
+  font-size:clamp(28px,6vw,42px);
+  font-weight:400;
+}
+.sub{
+  color:var(--muted);
+  margin:6px 0 0;
+  font-style:italic;
+}
+.card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:22px;
+  box-shadow:0 10px 28px rgba(75,82,66,.08);
+}
+.login{
+  max-width:520px;
+  margin:8vh auto 0;
+  padding:24px;
+}
+.login h2{
+  margin:0 0 8px;
+  color:var(--olive-dark);
+  font-weight:400;
+}
+label{
+  display:block;
+  margin:14px 0 6px;
+  font-family:Arial,sans-serif;
+  font-size:12px;
+  letter-spacing:1.5px;
+  color:#777c72;
+}
+input,select{
+  width:100%;
+  height:50px;
+  border:1px solid #d5d9cf;
+  border-radius:14px;
+  padding:0 14px;
+  font-size:16px;
+  color:var(--text);
+  background:#fff;
+  outline:none;
+}
+input:focus,select:focus{
+  border-color:var(--olive);
+  box-shadow:0 0 0 3px rgba(139,148,127,.12);
+}
+.row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.btn{
+  border:0;
+  border-radius:999px;
+  min-height:46px;
+  padding:0 18px;
+  cursor:pointer;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:15px;
+}
+.btn.primary{background:var(--olive-dark);color:#fff}
+.btn.soft{background:var(--olive-soft);color:var(--olive-dark)}
+.btn.ghost{background:#fff;color:var(--olive-dark);border:1px solid var(--line)}
+.btn.danger{background:#f7eded;color:var(--danger)}
+.actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.login .actions{margin-top:18px}
+.notice{
+  margin-top:12px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.5;
+}
+.dashboard{display:none}
+.dashboard.active{display:block}
+.stats{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-bottom:16px;
+}
+.stat{
+  padding:16px;
+  text-align:center;
+}
+.stat strong{
+  display:block;
+  font-size:26px;
+  color:var(--olive-dark);
+}
+.stat span{
+  color:var(--muted);
+  font-size:12px;
+  font-family:Arial,sans-serif;
+  letter-spacing:1px;
+}
+.add-box{
+  padding:18px;
+  margin-bottom:18px;
+}
+.add-box h3{
+  margin:0 0 12px;
+  color:var(--olive-dark);
+  font-weight:400;
+}
+.add-grid{
+  display:grid;
+  grid-template-columns:1fr 2fr auto;
+  gap:10px;
+  align-items:end;
+}
+.room{
+  margin-bottom:16px;
+  overflow:hidden;
+}
+.room-title{
+  padding:14px 16px;
+  font-size:23px;
+  color:var(--olive-dark);
+  background:#fafbf7;
+  border-bottom:1px solid var(--line);
+}
+.item{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  padding:14px 16px;
+  border-bottom:1px solid var(--line);
+  align-items:center;
+}
+.item:last-child{border-bottom:0}
+.item-name{
+  font-size:16px;
+}
+.meta{
+  color:var(--muted);
+  font-size:13px;
+  margin-top:5px;
+}
+.badge{
+  display:inline-block;
+  margin-left:7px;
+  border-radius:999px;
+  padding:4px 8px;
+  font:10px Arial,sans-serif;
+  letter-spacing:1px;
+}
+.available{background:#edf6e7;color:#5e8b43}
+.reserved{background:var(--olive-soft);color:var(--olive-dark)}
+.item .actions .btn{
+  min-height:36px;
+  font-size:13px;
+  padding:0 12px;
+}
+.empty{
+  padding:30px;
+  text-align:center;
+  color:var(--muted);
+}
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:24px;
+  transform:translateX(-50%) translateY(15px);
+  background:var(--olive-dark);
+  color:white;
+  padding:11px 16px;
+  border-radius:999px;
+  opacity:0;
+  pointer-events:none;
+  transition:.2s;
+  z-index:50;
+}
+.toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+@media(max-width:700px){
+  .stats{grid-template-columns:1fr 1fr 1fr}
+  .add-grid{grid-template-columns:1fr}
+  .item{grid-template-columns:1fr}
+  .row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<main class="shell">
+
+  <section id="loginCard" class="card login">
+    <h2>Painel administrativo</h2>
+    <p class="sub">Acesso restrito da lista de presentes.</p>
+
+    <label>E-MAIL</label>
+    <input id="email" type="email" value="ianasousa1902@gmail.com" readonly>
+
+    <label>SENHA</label>
+    <input id="password" type="password" placeholder="Digite sua senha">
+
+    <div class="actions">
+      <button class="btn primary" id="loginBtn">Entrar</button>
+      <button class="btn soft" id="signupBtn">Criar meu acesso</button>
+    </div>
+
+    <p class="notice">
+      Na primeira vez, use “Criar meu acesso”. Se o Supabase pedir confirmação do e-mail,
+      confirme pelo link recebido e depois volte para entrar.
+    </p>
+  </section>
+
+  <section id="dashboard" class="dashboard">
+    <div class="topbar">
+      <div>
+        <h1>Lista de presentes</h1>
+        <p class="sub">Gerencie presentes e reservas.</p>
+      </div>
+      <button class="btn ghost" id="logoutBtn">Sair</button>
+    </div>
+
+    <div class="stats">
+      <div class="card stat"><strong id="totalCount">0</strong><span>TOTAL</span></div>
+      <div class="card stat"><strong id="availableCount">0</strong><span>DISPONÍVEIS</span></div>
+      <div class="card stat"><strong id="reservedCount">0</strong><span>RESERVADOS</span></div>
+    </div>
+
+    <section class="card add-box">
+      <h3>Adicionar presente</h3>
+      <div class="add-grid">
+        <div>
+          <label>CÔMODO</label>
+          <input id="newRoom" placeholder="Ex.: Cozinha">
+        </div>
+        <div>
+          <label>PRESENTE</label>
+          <input id="newGift" placeholder="Ex.: Jogo de panelas">
+        </div>
+        <button class="btn primary" id="addBtn">Adicionar</button>
+      </div>
+    </section>
+
+    <div id="list"></div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://puevsrsipzzvkapqicex.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_wu_JCjbkhrtquuNk7KkPfg_Z7ofeQJ_';
+const ADMIN_EMAIL = 'ianasousa1902@gmail.com';
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const loginCard = document.getElementById('loginCard');
+const dashboard = document.getElementById('dashboard');
+const list = document.getElementById('list');
+const toast = document.getElementById('toast');
+
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(window.toastTimer);
+  window.toastTimer = setTimeout(()=>toast.classList.remove('show'),2200);
+}
+
+function escapeHtml(v){
+  return String(v)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
+}
+
+async function enterDashboard(){
+  loginCard.style.display = 'none';
+  dashboard.classList.add('active');
+  await loadAll();
+}
+
+async function leaveDashboard(){
+  dashboard.classList.remove('active');
+  loginCard.style.display = 'block';
+}
+
+document.getElementById('signupBtn').addEventListener('click', async ()=>{
+  const password = document.getElementById('password').value.trim();
+  if(password.length < 6){
+    showToast('Use uma senha com pelo menos 6 caracteres.');
+    return;
+  }
+
+  const { error } = await db.auth.signUp({
+    email: ADMIN_EMAIL,
+    password
+  });
+
+  if(error){
+    showToast(error.message);
+    return;
+  }
+
+  showToast('Acesso criado. Confira seu e-mail se for solicitado.');
+});
+
+document.getElementById('loginBtn').addEventListener('click', async ()=>{
+  const password = document.getElementById('password').value.trim();
+
+  const { data, error } = await db.auth.signInWithPassword({
+    email: ADMIN_EMAIL,
+    password
+  });
+
+  if(error){
+    showToast('E-mail ou senha inválidos.');
+    return;
+  }
+
+  if(data.user?.email !== ADMIN_EMAIL){
+    await db.auth.signOut();
+    showToast('Acesso não autorizado.');
+    return;
+  }
+
+  await enterDashboard();
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  await db.auth.signOut();
+  await leaveDashboard();
+});
+
+document.getElementById('addBtn').addEventListener('click', async ()=>{
+  const room = document.getElementById('newRoom').value.trim();
+  const gift = document.getElementById('newGift').value.trim();
+
+  if(!room || !gift){
+    showToast('Preencha o cômodo e o presente.');
+    return;
+  }
+
+  const { error } = await db
+    .from('presentes')
+    .insert({ comodo: room, presente: gift });
+
+  if(error){
+    showToast('Não foi possível adicionar.');
+    return;
+  }
+
+  document.getElementById('newGift').value = '';
+  showToast('Presente adicionado.');
+  await loadAll();
+});
+
+async function loadAll(){
+  const [{ data: gifts, error: giftsError }, { data: reservations, error: reservationsError }] =
+    await Promise.all([
+      db.from('presentes').select('*').order('id', { ascending:true }),
+      db.from('reservas').select('*')
+    ]);
+
+  if(giftsError || reservationsError){
+    list.innerHTML = '<div class="card empty">Não foi possível carregar o painel.</div>';
+    return;
+  }
+
+  const byGift = new Map((reservations || []).map(r => [r.presente_id, r]));
+  const grouped = {};
+
+  (gifts || []).forEach(g=>{
+    if(!grouped[g.comodo]) grouped[g.comodo] = [];
+    grouped[g.comodo].push({...g, reserva:byGift.get(g.id)});
+  });
+
+  document.getElementById('totalCount').textContent = gifts.length;
+  document.getElementById('reservedCount').textContent = gifts.filter(g=>g.reservado).length;
+  document.getElementById('availableCount').textContent = gifts.filter(g=>!g.reservado).length;
+
+  const rooms = Object.keys(grouped);
+
+  if(!rooms.length){
+    list.innerHTML = '<div class="card empty">Nenhum presente cadastrado.</div>';
+    return;
+  }
+
+  list.innerHTML = rooms.map(room=>`
+    <section class="card room">
+      <div class="room-title">${escapeHtml(room)}</div>
+      ${grouped[room].map(g=>`
+        <div class="item">
+          <div>
+            <div class="item-name">
+              ${escapeHtml(g.presente)}
+              <span class="badge ${g.reservado?'reserved':'available'}">
+                ${g.reservado?'RESERVADO':'DISPONÍVEL'}
+              </span>
+            </div>
+            ${g.reserva ? `<div class="meta">Reservado por: <strong>${escapeHtml(g.reserva.reservado_por)}</strong></div>` : ''}
+          </div>
+
+          <div class="actions">
+            ${g.reservado ? `<button class="btn soft" onclick="releaseGift(${g.id})">Liberar</button>` : ''}
+            <button class="btn ghost" onclick="editGift(${g.id}, '${encodeURIComponent(g.comodo)}', '${encodeURIComponent(g.presente)}')">Editar</button>
+            <button class="btn danger" onclick="deleteGift(${g.id})">Excluir</button>
+          </div>
+        </div>
+      `).join('')}
+    </section>
+  `).join('');
+}
+
+window.releaseGift = async function(id){
+  const { error: deleteError } = await db
+    .from('reservas')
+    .delete()
+    .eq('presente_id', id);
+
+  if(deleteError){
+    showToast('Não foi possível liberar.');
+    return;
+  }
+
+  const { error: updateError } = await db
+    .from('presentes')
+    .update({ reservado:false, reservado_em:null })
+    .eq('id', id);
+
+  if(updateError){
+    showToast('Não foi possível liberar.');
+    return;
+  }
+
+  showToast('Presente liberado.');
+  await loadAll();
+};
+
+window.editGift = async function(id, roomEncoded, giftEncoded){
+  const currentRoom = decodeURIComponent(roomEncoded);
+  const currentGift = decodeURIComponent(giftEncoded);
+
+  const newRoom = prompt('Cômodo:', currentRoom);
+  if(newRoom === null) return;
+
+  const newGift = prompt('Nome do presente:', currentGift);
+  if(newGift === null) return;
+
+  if(!newRoom.trim() || !newGift.trim()){
+    showToast('Os campos não podem ficar vazios.');
+    return;
+  }
+
+  const { error } = await db
+    .from('presentes')
+    .update({
+      comodo:newRoom.trim(),
+      presente:newGift.trim()
+    })
+    .eq('id', id);
+
+  if(error){
+    showToast('Não foi possível editar.');
+    return;
+  }
+
+  showToast('Presente atualizado.');
+  await loadAll();
+};
+
+window.deleteGift = async function(id){
+  if(!confirm('Excluir este presente da lista?')) return;
+
+  const { error } = await db
+    .from('presentes')
+    .delete()
+    .eq('id', id);
+
+  if(error){
+    showToast('Não foi possível excluir.');
+    return;
+  }
+
+  showToast('Presente excluído.');
+  await loadAll();
+};
+
+db
+  .channel('admin-lista-realtime')
+  .on('postgres_changes', {event:'*', schema:'public', table:'presentes'}, ()=>loadAll())
+  .on('postgres_changes', {event:'*', schema:'public', table:'reservas'}, ()=>loadAll())
+  .subscribe();
+
+(async ()=>{
+  const { data:{ session } } = await db.auth.getSession();
+
+  if(session?.user?.email === ADMIN_EMAIL){
+    await enterDashboard();
+  }
+})();
+</script>
+
+</body>
+</html>
